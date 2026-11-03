@@ -4,7 +4,7 @@ name: infra Terraform
 on:
   workflow_dispatch:
 
-# GitHub OIDC permissions
+# GitHub OIDC Permissions
 permissions:
   id-token: write
   contents: read
@@ -35,7 +35,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::YOUR_ACCOUNT_ID:role/YOUR_ROLE_NAME
+          role-to-assume: arn:aws:iam::392211784798:role/GitHubActionsRole-K8
           aws-region: ${{ env.AWS_REGION }}
 
 
