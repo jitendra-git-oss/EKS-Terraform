@@ -15,19 +15,32 @@ env:
   TF_WORKING_DIR: EKS-Terraform
 
 jobs:
-
   terraform:
     name: Terraform Validate, Plan & Apply
     runs-on: ubuntu-latest
 
     steps:
-
       # ============================================================
       # CHECKOUT REPOSITORY
       # ============================================================
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # ============================================================
+      # CHECK GITHUB OIDC CLAIMS
+      # ============================================================
+      - name: Check GitHub OIDC Claims
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com');
+            const payload = JSON.parse(
+              Buffer.from(token.split('.')[1], 'base64url').toString()
+            );
+
+            console.log("Audience:", payload.aud);
+            console.log("Subject:", payload.sub);
+            console.log("Issuer:", payload.iss);
 
       # ============================================================
       # AWS OIDC AUTHENTICATION
@@ -37,7 +50,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::392211784798:role/GitHubActionsRole-K8
           aws-region: ${{ env.AWS_REGION }}
-
+          role-session-name: GitHubActionsSession
 
       # ============================================================
       # VERIFY AWS IDENTITY
@@ -45,7 +58,6 @@ jobs:
       - name: Verify AWS Identity
         run: |
           aws sts get-caller-identity
-
 
       # ============================================================
       # TERRAFORM SETUP
@@ -59,7 +71,6 @@ jobs:
         run: |
           terraform version
 
-
       # ============================================================
       # TERRAFORM INIT
       # ============================================================
@@ -67,7 +78,6 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform init
-
 
       # ============================================================
       # TERRAFORM VALIDATE
@@ -77,7 +87,6 @@ jobs:
         run: |
           terraform validate
 
-
       # ============================================================
       # TERRAFORM PLAN
       # ============================================================
@@ -86,7 +95,6 @@ jobs:
         run: |
           terraform plan -out=tfplan
 
-
       # ============================================================
       # TERRAFORM APPLY
       # ============================================================
@@ -94,7 +102,6 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform apply -auto-approve tfplan
-
 
       # ============================================================
       # TERRAFORM OUTPUTS
