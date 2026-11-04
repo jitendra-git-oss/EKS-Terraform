@@ -67,7 +67,7 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      - name: Terraform Version
+      - name: TERRAFORM VERSION
         run: |
           terraform version
 
