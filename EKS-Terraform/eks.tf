@@ -309,7 +309,7 @@ resource "aws_eks_cluster" "eks" {
 }
 
 ############################
-# EKS ACCESS ENTRIES (AUTHENTICATION / RBAC)
+# EKS ACCESS ENTRIES (RBAC)
 ############################
 
 resource "aws_eks_access_entry" "github_actions" {
@@ -343,7 +343,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
 }
 
 ############################
-# NODE GROUP
+# NODE GROUP (FREE TIER ELIGIBLE)
 ############################
 
 resource "aws_eks_node_group" "node_group" {
@@ -357,11 +357,12 @@ resource "aws_eks_node_group" "node_group" {
     aws_subnet.private2.id
   ]
 
-  instance_types = ["c7i-flex.large"]
+  # Free Tier eligible instance type
+  instance_types = ["t3.micro"]
 
   scaling_config {
-    desired_size = 4
-    max_size     = 6
+    desired_size = 2
+    max_size     = 3
     min_size     = 1
   }
 
@@ -380,17 +381,32 @@ resource "aws_eks_node_group" "node_group" {
 }
 
 ############################
-# BASTION HOST
+# BASTION HOST (FREE TIER ELIGIBLE)
 ############################
 
+data "aws_ami" "amazon_linux_2023" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023.*-x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
 resource "aws_instance" "eks" {
-  ami                    = "ami-0c230065b91270bc6"
-  instance_type          = "c7i-flex.large"
+  ami                    = data.aws_ami.amazon_linux_2023.id
+  instance_type          = "t3.micro"
   subnet_id              = aws_subnet.public1.id
   vpc_security_group_ids = [aws_security_group.bastion_sg.id]
 
   root_block_device {
-    volume_size = 30
+    volume_size = 20
   }
 
   tags = {
