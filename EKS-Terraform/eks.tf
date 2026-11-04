@@ -46,6 +46,19 @@ variable "github_actions_role_arn" {
 }
 
 ############################
+# EXISTING IAM ROLES (FETCH EXISTING)
+############################
+
+# ये ब्लॉक नया रोल नहीं बनाएंगे, बल्कि AWS में मौजूद पुराने रोल को उठाएंगे
+data "aws_iam_role" "cluster_role" {
+  name = "eks-cluster-role"
+}
+
+data "aws_iam_role" "worker_role" {
+  name = "eks-worker-role"
+}
+
+############################
 # VPC & INTERNET GATEWAY
 ############################
 
@@ -199,7 +212,7 @@ resource "aws_route_table_association" "priv2" {
 ############################
 
 resource "aws_security_group" "bastion_sg" {
-  name        = "bastion-sg"
+  name_prefix = "bastion-sg-"
   description = "Security group for bastion instance"
   vpc_id      = aws_vpc.eks_vpc.id
 
@@ -225,66 +238,12 @@ resource "aws_security_group" "bastion_sg" {
 }
 
 ############################
-# IAM ROLES - CONTROL PLANE & NODES
-############################
-
-resource "aws_iam_role" "cluster_role" {
-  name = "eks-cluster-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "eks.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "cluster_policy" {
-  role       = aws_iam_role.cluster_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-}
-
-resource "aws_iam_role" "worker_role" {
-  name = "eks-worker-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "worker_node" {
-  role       = aws_iam_role.worker_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "cni" {
-  role       = aws_iam_role.worker_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-}
-
-resource "aws_iam_role_policy_attachment" "ecr" {
-  role       = aws_iam_role.worker_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
-
-############################
 # EKS CLUSTER
 ############################
 
 resource "aws_eks_cluster" "eks" {
   name     = var.cluster_name
-  role_arn = aws_iam_role.cluster_role.arn
+  role_arn = data.aws_iam_role.cluster_role.arn
   version  = var.cluster_version
 
   vpc_config {
@@ -302,10 +261,6 @@ resource "aws_eks_cluster" "eks" {
     authentication_mode                         = "API_AND_CONFIG_MAP"
     bootstrap_cluster_creator_admin_permissions = true
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.cluster_policy
-  ]
 }
 
 ############################
@@ -343,13 +298,13 @@ resource "aws_iam_openid_connect_provider" "eks" {
 }
 
 ############################
-# NODE GROUP (FREE TIER ELIGIBLE)
+# NODE GROUP (Free-Tier Eligible)
 ############################
 
 resource "aws_eks_node_group" "node_group" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "eks-node-group"
-  node_role_arn   = aws_iam_role.worker_role.arn
+  node_role_arn   = data.aws_iam_role.worker_role.arn
   version         = var.cluster_version
 
   subnet_ids = [
@@ -357,7 +312,6 @@ resource "aws_eks_node_group" "node_group" {
     aws_subnet.private2.id
   ]
 
-  # Free Tier eligible instance type
   instance_types = ["t3.micro"]
 
   scaling_config {
@@ -365,12 +319,6 @@ resource "aws_eks_node_group" "node_group" {
     max_size     = 3
     min_size     = 1
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.worker_node,
-    aws_iam_role_policy_attachment.cni,
-    aws_iam_role_policy_attachment.ecr
-  ]
 
   tags = {
     Name        = "eks-node"
@@ -381,7 +329,7 @@ resource "aws_eks_node_group" "node_group" {
 }
 
 ############################
-# BASTION HOST (FREE TIER ELIGIBLE)
+# BASTION HOST (Free-Tier Eligible)
 ############################
 
 data "aws_ami" "amazon_linux_2023" {
@@ -417,7 +365,7 @@ resource "aws_instance" "eks" {
               #!/bin/bash
               yum update -y
 
-              # Install stable kubectl
+              # Install kubectl
               KUBECTL_VERSION=$(curl -L -s https://dl.k8s.io/release/stable.txt)
               curl -LO "https://dl.k8s.io/release/$${KUBECTL_VERSION}/bin/linux/amd64/kubectl"
               chmod +x kubectl
@@ -458,7 +406,7 @@ resource "aws_eks_addon" "kube_proxy" {
 }
 
 ############################
-# EBS CSI DRIVER (VIA IRSA / OIDC)
+# EBS CSI DRIVER (VIA OIDC / IRSA)
 ############################
 
 data "aws_iam_policy_document" "ebs_csi_assume_role" {
@@ -486,7 +434,7 @@ data "aws_iam_policy_document" "ebs_csi_assume_role" {
 }
 
 resource "aws_iam_role" "ebs_csi_role" {
-  name               = "AmazonEKS_EBS_CSI_DriverRole"
+  name_prefix        = "eks-ebs-csi-"
   assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume_role.json
 }
 
