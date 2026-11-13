@@ -29,7 +29,7 @@ variable "aws_region" {
 
 variable "cluster_name" {
   type        = string
-  default     = "naresh"
+  default     = "Jitendra"
   description = "EKS cluster name"
 }
 
