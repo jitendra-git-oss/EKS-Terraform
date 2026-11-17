@@ -92,7 +92,15 @@ jobs:
               aws_eks_access_entry.github_actions \
               "Jitendra:arn:aws:iam::405768154947:role/GitHubActionsRole-K8"
           fi
-       
+      
+      # CHECK ACCESS ENTRY IN TERRAFORM STATE
+      - name: Check Access Entry State
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform state list
+
+          terraform state show aws_eks_access_entry.github_actions
+
       # ============================================================
       # CHECK EBS CSI ADD-ON STATUS
       # ============================================================
