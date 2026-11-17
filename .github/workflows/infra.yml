@@ -78,6 +78,20 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: |
           terraform init
+      
+      # ============================================================
+      # IMPORT EXISTING EKS ACCESS ENTRY
+      # ============================================================
+      - name: Import Existing EKS Access Entry
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          if terraform state show aws_eks_access_entry.github_actions >/dev/null 2>&1; then
+            echo "Access Entry already exists in Terraform state. Skipping import."
+          else
+            terraform import \
+              aws_eks_access_entry.github_actions \
+              "Jitendra:arn:aws:iam::405768154947:role/GitHubActionsRole-K8"
+          fi
 
       # ============================================================
       # TERRAFORM VALIDATE
