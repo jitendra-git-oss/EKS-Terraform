@@ -48,7 +48,7 @@ variable "cluster_version" {
 
 variable "github_actions_role_arn" {
   type        = string
-  default     = "arn:aws:iam::405768154947:role/GitHubActionsRole-K8"
+  default     = "arn:aws:iam::539827877082:role/GitHubActionsRole-K8"
   description = "IAM role ARN assumed by GitHub Actions for cluster administration"
 }
 
