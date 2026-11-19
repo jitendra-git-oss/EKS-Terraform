@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.5.0"
 
 backend "s3" {
-  bucket  = "jitendra-eks-tfstate-405768154947"
+  bucket  = "jitendra-eks-tfstate-539827877082"
   key     = "eks/terraform.tfstate"
   region  = "us-east-1"
   encrypt = true
