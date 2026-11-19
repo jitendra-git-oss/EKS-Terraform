@@ -79,16 +79,17 @@ jobs:
         run: |
           terraform init
       
-      # CHECK EBS CSI ADD-ON STATUS
+      # CHECK EKS CLUSTER AND ADD-ONS
       # ============================================================
-      - name: Diagnose EBS CSI Add-on
+      - name: Check EKS Cluster and Add-ons
         run: |
-          aws eks describe-addon \
+          echo "Checking EKS clusters..."
+          aws eks list-clusters --region ${{ env.AWS_REGION }}
+
+          echo "Checking EBS CSI Add-on..."
+          aws eks list-addons \
             --cluster-name Jitendra \
-            --addon-name aws-ebs-csi-driver \
-            --region ${{ env.AWS_REGION }} \
-            --query 'addon.{Status:status,Issues:health.issues,RoleArn:serviceAccountRoleArn,Version:addonVersion}' \
-            --output json
+            --region ${{ env.AWS_REGION }}
 
       # ============================================================
       # TERRAFORM VALIDATE
